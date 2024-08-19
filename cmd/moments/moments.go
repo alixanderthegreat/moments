@@ -108,7 +108,7 @@ func Record(filename string, moments moments) {
 	// Open the file in write mode, or create it if it doesn't exist
 	file, err := os.OpenFile(
 		filename,
-		os.O_CREATE|os.O_WRONLY,
+		os.O_CREATE|os.O_TRUNC|os.O_WRONLY,
 		0600,
 	)
 
@@ -164,13 +164,17 @@ func Filter(file_path, filter_term string) moments {
 	); err != nil {
 		panic(err)
 	}
+
 	for _, moment := range moments {
 		if filter_term != `` {
-			if !strings.Contains(strings.ToLower(moment.Title), strings.ToLower(filter_term)) {
+			condition := strings.Contains(
+				strings.ToLower(moment.Title),
+				strings.ToLower(filter_term),
+			)
+			if !condition {
 				continue
 			}
 		}
-
 		filtered = append(filtered, moment)
 	}
 	return filtered
@@ -204,10 +208,10 @@ func reverse(moments moments) {
 
 func process_moments(moments moments, LOG bool) {
 	for _, moment := range moments {
+
 		if LOG {
 			log.Printf("%+v\n", moment)
 		}
-		// fmt.Printf("%+v", moment.Event)
 		switch moment.Event.Kind {
 		// case hook.MouseDrag: // not implemented very well
 		// 	robotgo.DragSmooth(

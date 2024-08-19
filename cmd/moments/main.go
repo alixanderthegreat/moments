@@ -86,6 +86,7 @@ recording:
 	moments -r -d "./assets/" -l			; record moments to specified directory & print logs the console
 	moments -r -f "simple.json"	-l 		; record to "simple.json" file and log to console
 	moments -r -d "./assets/" -f "simple.json" -l 	; record "simple.json" to specified dir and log to console
+	moments -r -t "firefox" -l			; record moments when window title is "firefox" and log to console
 
 playback:
 	moments -p 					; play from default dir 
@@ -109,65 +110,62 @@ func main() {
 	flag_count := flag.NFlag()
 
 	if flag_count <= 0 {
-
 		fmt.Print(help_msg)
-
 	} else {
+		var values []string
+		flag.VisitAll(
+			func(f *flag.Flag) {
+				if f.Name == "p" || f.Name == "r" || f.Name == "l" {
+					values = append(values, f.Value.String())
+				}
+			},
+		)
 
-		if flag_count == 1 {
+		file_path := resolve_filename(*FILE)
 
-			if *LOG {
+		if *FILTER != "" && !*PLAY && !*RECORD {
+			for _, moment := range Filter(
+				file_path,
+				*FILTER,
+			) {
+				fmt.Printf(
+					"%s\n",
+					moment,
+				)
+			}
+		} else if len(values) < 3 ||
+			!*PLAY && !*RECORD && !*LOG ||
+			*PLAY && *RECORD {
+			panic("moments can either log or not when moments is set to play or record")
+		}
+
+		if *LOG && !*PLAY && !*RECORD {
+			Listen(
+				*FILTER,
+				*LOG,
+			)
+		}
+
+		if *RECORD || *RECORD && *LOG {
+			Record(
+				file_path,
 				Listen(
 					*FILTER,
 					*LOG,
-				)
-			}
+				),
+			)
+		} else if *PLAY || *PLAY && *LOG {
+			Play(
+				file_path,
+				*FILTER,
+				*BACKWARDS,
+				*LOOP,
+				*LOG,
+			)
+		} else if *FILTER != "" && !*PLAY && !*RECORD {
 
-		} else if flag_count >= 1 {
-			if *LOG {
-				flag.VisitAll(
-					func(f *flag.Flag) {
-						fmt.Printf(
-							"  -%s: %v\n",
-							f.Name,
-							f.Value,
-						)
-					},
-				)
-			}
-
-			file_path := resolve_filename(*FILE)
-
-			if *RECORD || *RECORD && *LOG {
-				Record(
-					file_path,
-					Listen(
-						*FILTER,
-						*LOG,
-					),
-				)
-			} else if *PLAY || *PLAY && *LOG {
-				Play(
-					file_path,
-					*FILTER,
-					*BACKWARDS,
-					*LOOP,
-					*LOG,
-				)
-			} else if *FILTER != "" {
-				for _, moment := range Filter(
-					file_path,
-					*FILTER,
-				) {
-					fmt.Printf(
-						"%s\n",
-						moment,
-					)
-				}
-			}
 		}
 	}
-
 }
 
 func resolve_filename(file string) string {
@@ -177,7 +175,6 @@ func resolve_filename(file string) string {
 		return *DIR + file
 
 	} else if *RECORD {
-
 		return time_stamp_filename()
 
 	} else {
